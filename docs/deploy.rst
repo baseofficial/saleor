@@ -1,54 +1,25 @@
 Deployment
 ==========
 
+.. _docker:
+
 Docker
 ------
 
+You will need to install Docker first.
 
-Local prerequisites
-*******************
+Before building the image make sure you have all of the front-end assets prepared for production:
 
-You will need to install Docker and
-`docker-compose <https://docs.docker.com/compose/install/>`__ before
-performing the following steps.
+.. code-block:: bash
 
-Usage
-*****
+ $ npm run build-assets
+ $ python manage.py collectstatic
 
-1. Build ``Saleor`` with ``docker-compose``
+Then use Docker to build the image:
 
-   .. code::
+.. code-block:: bash
 
-    $ docker-compose build
-
-
-2. Prepare the database
-
-   .. code::
-
-    $ docker-compose run web python manage.py migrate
-    $ docker-compose run web python manage.py populatedb --createsuperuser
-
-   The ``--createsuperuser`` switch creates an admin account for
-    ``admin@example.com`` with the password set to ``admin``.
-
-
-3. Install front-end dependencies
-
-   .. code::
-
-    $ docker-compose run web npm install
-    $ docker-compose run web grunt
-
-
-4. Run ``Saleor``
-
-   .. code::
-
-    $ docker-compose up
-
-
-By default, the application is configured to listen on port ``8000``.
+ $ docker build -t mystorefront .
 
 
 Heroku
@@ -57,23 +28,24 @@ Heroku
 First steps
 ***********
 
-.. code::
+.. code-block:: bash
 
- $ heroku create --buildpack https://github.com/ddollar/heroku-buildpack-multi.git
- $ heroku addons:add heroku-postgresql
- $ heroku addons:add heroku-redis
+ $ heroku create --buildpack https://github.com/heroku/heroku-buildpack-nodejs.git
+ $ heroku buildpacks:add https://github.com/heroku/heroku-buildpack-python.git
+ $ heroku addons:create heroku-postgresql
+ $ heroku addons:create heroku-redis
  $ heroku config:set SECRET_KEY='<your secret key here>'
  $ heroku config:set ALLOWED_HOSTS='<your hosts here>'
 
 
 .. note::
- Heroku's storage is volatile. This means that all instances of your application will have separate disks and will lose all changes made to the local disk each time the application is restarted. The best approach is to use cloud storage such as [[Amazon S3|Storage: Amazon S3]].
+ Heroku's storage is volatile. This means that all instances of your application will have separate disks and will lose all changes made to the local disk each time the application is restarted. The best approach is to use cloud storage such as Amazon S3. See :ref:`amazon_s3` for configuration details.
 
 
 Deploy
 ******
 
-.. code::
+.. code-block:: bash
 
  $ git push heroku master
 
@@ -81,6 +53,6 @@ Deploy
 Prepare the database
 ********************
 
-.. code::
+.. code-block:: bash
 
  $ heroku run python manage.py migrate

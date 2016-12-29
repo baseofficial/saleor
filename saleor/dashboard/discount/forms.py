@@ -6,7 +6,7 @@ from django.utils.translation import pgettext_lazy
 from django_prices.forms import PriceField
 
 from ...discount.models import Sale, Voucher
-from ...shipping.models import ShippingMethodCountry
+from ...shipping.models import ShippingMethodCountry, COUNTRY_CODE_CHOICES
 
 
 class SaleForm(forms.ModelForm):
@@ -51,7 +51,7 @@ def country_choices():
     country_codes = ShippingMethodCountry.objects.all()
     country_codes = country_codes.values_list('country_code', flat=True)
     country_codes = country_codes.distinct()
-    country_dict = dict(ShippingMethodCountry.COUNTRY_CODE_CHOICES)
+    country_dict = dict(COUNTRY_CODE_CHOICES)
     return [
         (country_code, country_dict[country_code])
         for country_code in country_codes]
@@ -62,7 +62,7 @@ class ShippingVoucherForm(forms.ModelForm):
     limit = PriceField(
         min_value=0, required=False, currency=settings.DEFAULT_CURRENCY,
         label=pgettext_lazy(
-            'voucher', 'Only if shipping cost is less than or equal to'))
+            'voucher', 'Only if order is over or equal to'))
     apply_to = forms.ChoiceField(
         label=pgettext_lazy('voucher', 'Country'), choices=country_choices,
         required=False)
@@ -115,8 +115,8 @@ class ProductVoucherForm(forms.ModelForm):
         # On which product we should apply it? On first, last or cheapest?
         # Percentage case is limited to the all value and the apply_to field
         # is not used in this case so we set it to None.
-        if (self.instance.discount_value_type
-                == Voucher.DISCOUNT_VALUE_PERCENTAGE):
+        if (self.instance.discount_value_type ==
+                Voucher.DISCOUNT_VALUE_PERCENTAGE):
             self.instance.apply_to = None
         return super(ProductVoucherForm, self).save(commit)
 
@@ -141,7 +141,7 @@ class CategoryVoucherForm(forms.ModelForm):
         # On which product we should apply it? On first, last or cheapest?
         # Percentage case is limited to the all value and the apply_to field
         # is not used in this case so we set it to None.
-        if (self.instance.discount_value_type
-                == Voucher.DISCOUNT_VALUE_PERCENTAGE):
+        if (self.instance.discount_value_type ==
+                Voucher.DISCOUNT_VALUE_PERCENTAGE):
             self.instance.apply_to = None
         return super(CategoryVoucherForm, self).save(commit)

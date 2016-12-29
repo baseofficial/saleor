@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
+from django.db.models import F
 from django.utils.translation import pgettext, pgettext_lazy
 from django.utils.encoding import python_2_unicode_compatible, smart_text
 from django_countries import countries
@@ -24,13 +25,20 @@ class VoucherQueryset(models.QuerySet):
     def active(self):
         today = date.today()
         queryset = self.filter(
-            models.Q(usage_limit__isnull=True)
-            | models.Q(used__lt=models.F('usage_limit')))
+            models.Q(usage_limit__isnull=True) |
+            models.Q(used__lt=models.F('usage_limit')))
         queryset = queryset.filter(
-            models.Q(end_date__isnull=True)
-            | models.Q(end_date__gte=today))
+            models.Q(end_date__isnull=True) | models.Q(end_date__gte=today))
         queryset = queryset.filter(start_date__lte=today)
         return queryset
+
+    def increase_usage(self, voucher):
+        voucher.used = F('used') + 1
+        voucher.save(update_fields=['used'])
+
+    def decrease_usage(self, voucher):
+        voucher.used = F('used') - 1
+        voucher.save(update_fields=['used'])
 
 
 @python_2_unicode_compatible
@@ -150,15 +158,18 @@ class Voucher(models.Model):
         else:
             return discount
 
+    def validate_limit(self, value):
+        limit = self.limit if self.limit is not None else value
+        if value < limit:
+            msg = pgettext(
+                'voucher',
+                'This offer is only valid for orders over %(amount)s.')
+            raise NotApplicable(msg % {'amount': net(limit)})
+
     def get_discount_for_checkout(self, checkout):
         if self.type == Voucher.VALUE_TYPE:
-            cart_total = checkout.cart.get_total()
-            limit = self.limit if self.limit is not None else cart_total
-            if cart_total < limit:
-                msg = pgettext(
-                    'voucher',
-                    'This offer is only valid for orders over %(amount)s.')
-                raise NotApplicable(msg % {'amount': net(limit)})
+            cart_total = checkout.get_subtotal()
+            self.validate_limit(cart_total)
             return self.get_fixed_discount_for(cart_total)
 
         elif self.type == Voucher.SHIPPING_TYPE:
@@ -171,17 +182,14 @@ class Voucher(models.Model):
                 msg = pgettext(
                     'voucher', 'Please select a shipping method first.')
                 raise NotApplicable(msg)
-            if (self.apply_to is not None and
+            if (self.apply_to and
                     shipping_method.country_code != self.apply_to):
                 msg = pgettext(
                     'voucher', 'This offer is only valid in %(country)s.')
                 raise NotApplicable(msg % {
                     'country': self.get_apply_to_display()})
-            if self.limit is not None and shipping_method.price > self.limit:
-                msg = pgettext(
-                    'voucher',
-                    'This offer is only valid for shipping over %(amount)s.')
-                raise NotApplicable(msg % {'amount': net(self.limit)})
+            cart_total = checkout.get_subtotal()
+            self.validate_limit(cart_total)
             return self.get_fixed_discount_for(shipping_method.price)
 
         elif self.type in (Voucher.PRODUCT_TYPE, Voucher.CATEGORY_TYPE):
@@ -257,14 +265,13 @@ class Sale(models.Model):
         return False
 
     def modifier_for_variant(self, variant):
-        check_price = variant.get_price_per_item()
         discounted_products = [p.pk for p in self.products.all()]
         discounted_categories = list(self.categories.all())
-        if discounted_products and variant.pk not in discounted_products:
+        if discounted_products and variant.product.pk not in discounted_products:
             raise NotApplicable('Discount not applicable for this product')
         if (discounted_categories and not
-                self._product_has_category_discount(
-                    variant.product, discounted_categories)):
+            self._product_has_category_discount(
+                variant.product, discounted_categories)):
             raise NotApplicable('Discount too high for this product')
         return self.get_discount()
 

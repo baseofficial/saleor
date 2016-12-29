@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 {% load i18n %}
 {% load staticfiles %}
+{% load render_bundle from webpack_loader %}
 
 <html lang="en" class="no-js">
     <head>
@@ -12,7 +13,8 @@
         <meta name="author" content="{% trans "Mirumee Software" %}">
         {% endblock meta %}
 
-        <link rel="stylesheet" type="text/css" href="{% static "css/storefront.css" %}">
+        {% render_bundle 'vendor' 'css' %}
+        {% render_bundle 'storefront' 'css' %}
 
         {% block stylesheet %}{% endblock stylesheet %}
 
@@ -47,7 +49,7 @@
                         </ul>
                         <ul class="nav navbar-nav navbar-right">
                             <li>
-                                <a href="{% url "cart:index" %}"><i class="fa fa-shopping-cart"></i> {% trans "Cart" %} {% if request.cart %}<span class="badge">{{ request.cart.count }}</span>{% endif %}</a>
+                                <a href="{% url "cart:index" %}"><i class="glyphicon glyphicon-shopping-cart"></i> {% trans "Cart" %}</a>
                             </li>
                             {% if user.is_authenticated %}
                             <li class="dropdown">
@@ -57,18 +59,19 @@
                                     <li><a href="{% url "profile:orders" %}">{% trans "Your orders" %}</a></li>
                                     {% if user.is_staff %}
                                         <li class="divider"></li>
-                                        <li><a href="{% url "dashboard:index" %}">{% trans "Dashboard" %}</a></li>
+                                        <li><a href="{% url "dashboard:index" %}" traget="_blank">{% trans "Dashboard" %}</a></li>
                                     {% endif %}
                                     <li class="divider"></li>
-                                    <li><a href="{% url "registration:logout" %}">{% trans "Log out" %}</a></li>
+                                    <li><a href="{% url "account_logout" %}">{% trans "Log out" %}</a></li>
                                   </ul>
                             </li>
                             {% else %}
                             <li>
-                                <a href="{% url "registration:login" %}">Sign in</a>
+                                <a href="{% url "account_login" %}">Sign in</a>
                             </li>
                             {% endif %}
                         </ul>
+                        {% include "search/search_form.html" %}
                     </div>
                 </nav>
             </header>
@@ -115,7 +118,8 @@
             </footer>
         {% endblock %}
         {% block footer_scripts %}
-            <script src="{% static "js/storefront.js" %}"></script>
+            {% render_bundle 'vendor' 'js' %}
+            {% render_bundle 'storefront' 'js' %}
         {% endblock footer_scripts %}
     </body>
 </html>

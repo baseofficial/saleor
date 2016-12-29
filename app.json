@@ -1,6 +1,6 @@
 {
   "name": "saleor",
-  "description": "A fork'n'play e-commerce in Django",
+  "description": "An e-commerce storefront for Python and Django",
   "repository": "https://github.com/mirumee/saleor",
   "website": "http://getsaleor.com/",
   "logo": "https://mirumee.com/img/opensource-saleor.png",
@@ -13,10 +13,12 @@
   "env": {
     "DJANGO_SETTINGS_MODULE": "saleor.settings",
     "DEBUG": "False",
+    "NPM_CONFIG_PRODUCTION": "false",
     "ALLOWED_HOSTS": {
       "description": "Comma-separated list of hosts",
       "value": ".herokuapp.com"
     },
+    "DEFAULT_FROM_EMAIL": "noreply@example.com",
     "SECRET_KEY": {
       "description": "A secret key for verifying the integrity of signed cookies.",
       "generator": "secret"
@@ -42,11 +44,16 @@
   },
   "addons": [
     "heroku-postgresql:hobby-dev",
-    "heroku-redis:hobby-dev"
+    "heroku-redis:hobby-dev",
+    "sendgrid:starter",
+    "bonsai:sandbox"
   ],
   "buildpacks": [
     {
-      "url": "https://github.com/ddollar/heroku-buildpack-multi.git"
+      "url": "https://github.com/heroku/heroku-buildpack-nodejs.git"
+    },
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-python.git"
     }
   ],
   "success_url": "/"

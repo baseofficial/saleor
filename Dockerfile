@@ -1,29 +1,13 @@
 FROM python:3.5
 ENV PYTHONUNBUFFERED 1
 
-RUN \
- apt-get -y update && \
- apt-get install -y npm && \
- apt-get clean && \
- ln -s /usr/bin/nodejs /usr/bin/node
-
-ADD requirements.txt /app/requirements.txt
-RUN cd /app && pip install -r requirements.txt
-
-ADD package.json /app/package.json
-RUN cd /app && npm install
-
-RUN useradd -ms /bin/bash saleor
+ADD requirements.txt /app/
+RUN pip install -r /app/requirements.txt
 
 ADD . /app
 WORKDIR /app
 
-ENV PATH $PATH:/app/node_modules/.bin
-RUN grunt
-RUN SECRET_KEY=tmpkey python manage.py collectstatic --noinput
-
 EXPOSE 8000
 ENV PORT 8000
 
-ENTRYPOINT ["/app/compose/entrypoint.sh"]
-CMD ["uwsgi saleor/wsgi/uwsgi.ini"]
+CMD ["uwsgi", "/app/saleor/wsgi/uwsgi.ini"]

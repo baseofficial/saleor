@@ -1,14 +1,14 @@
 from __future__ import unicode_literals
 
-from django.contrib.auth.hashers import (check_password, make_password,
-                                         is_password_usable)
-from django.contrib.auth.models import BaseUserManager, PermissionsMixin
+from django.contrib.auth.models import (
+    AbstractBaseUser, BaseUserManager, PermissionsMixin)
 from django.db import models
 from django.forms.models import model_to_dict
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import pgettext_lazy
 from django_countries.fields import Country, CountryField
+from ..search import index
 
 
 class AddressManager(models.Manager):
@@ -33,11 +33,11 @@ class AddressManager(models.Manager):
 @python_2_unicode_compatible
 class Address(models.Model):
     first_name = models.CharField(
-        pgettext_lazy('Address field', 'first name'),
-        max_length=256)
+        pgettext_lazy('Address field', 'given name'),
+        max_length=256, blank=True)
     last_name = models.CharField(
-        pgettext_lazy('Address field', 'last name'),
-        max_length=256)
+        pgettext_lazy('Address field', 'family name'),
+        max_length=256, blank=True)
     company_name = models.CharField(
         pgettext_lazy('Address field', 'company or organization'),
         max_length=256, blank=True)
@@ -64,7 +64,6 @@ class Address(models.Model):
     phone = models.CharField(
         pgettext_lazy('Address field', 'phone number'),
         max_length=30, blank=True)
-
     objects = AddressManager()
 
     @property
@@ -118,8 +117,7 @@ class UserManager(BaseUserManager):
         return entry
 
 
-@python_2_unicode_compatible
-class User(PermissionsMixin, models.Model):
+class User(PermissionsMixin, AbstractBaseUser, index.Indexed):
     email = models.EmailField(unique=True)
     addresses = models.ManyToManyField(Address, blank=True)
     is_staff = models.BooleanField(
@@ -127,15 +125,9 @@ class User(PermissionsMixin, models.Model):
         default=False)
     is_active = models.BooleanField(
         pgettext_lazy('User field', 'active'),
-        default=False)
-    password = models.CharField(
-        pgettext_lazy('User field', 'password'),
-        max_length=128, editable=False)
+        default=True)
     date_joined = models.DateTimeField(
         pgettext_lazy('User field', 'date joined'),
-        default=timezone.now, editable=False)
-    last_login = models.DateTimeField(
-        pgettext_lazy('User field', 'last login'),
         default=timezone.now, editable=False)
     default_shipping_address = models.ForeignKey(
         Address, related_name='+', null=True, blank=True,
@@ -148,43 +140,13 @@ class User(PermissionsMixin, models.Model):
 
     USERNAME_FIELD = 'email'
 
-    REQUIRED_FIELDS = []
-
     objects = UserManager()
 
-    def __str__(self):
-        return self.get_username()
-
-    def natural_key(self):
-        return (self.get_username(),)
+    search_fields = [
+        index.SearchField('email')]
 
     def get_full_name(self):
         return self.email
 
     def get_short_name(self):
         return self.email
-
-    def get_username(self):
-        'Return the identifying username for this User'
-        return self.email
-
-    def is_anonymous(self):
-        return False
-
-    def is_authenticated(self):
-        return True
-
-    def set_password(self, raw_password):
-        self.password = make_password(raw_password)
-
-    def check_password(self, raw_password):
-        def setter(raw_password):
-            self.set_password(raw_password)
-            self.save(update_fields=['password'])
-        return check_password(raw_password, self.password, setter)
-
-    def set_unusable_password(self):
-        self.password = make_password(None)
-
-    def has_usable_password(self):
-        return is_password_usable(self.password)
